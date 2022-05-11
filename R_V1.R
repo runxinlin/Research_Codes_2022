@@ -176,7 +176,7 @@ for (x in 1:periods) {
   holding_size_list[[x]] = df_size[(1+rollingW+(x-1)* holding):(rollingW+ holding+(x-1)* holding), ]
 }
 
-#### 1. Equal-Weighting lowbeta portfolio (Lowbeta)
+#### 1. Equal-Weighting lowbeta portfolio (Lowbeta Stocks)
 #The equal-weighted low beta portfolio (Low beta) is formed by equal weighting 
 #those stocks with the lowest 20% of betas. 
 hld_period_calcs1 <- function(a, b){
@@ -195,7 +195,7 @@ df_portfolio <- data.frame(row.names = c(rownames(df_SR)[-c(1:rollingW)][1:(peri
                            MR_RF = round(df_MR$MR_RF[-c(1:rollingW)][1:(periods*holding)],4),
                            Lowbeta = unlist(Map(hld_period_calcs1, holding_return_list, HML))) # port_number 1 is low beta portfolio
 
-#### 2. Market Capitalization-Weighting (MCW)
+#### 2. Market Capitalization-Weighting (MCW) (Lowbeta Stocks)
 # Calculate low-beta market capitalization
 mcap_wght <- vector(mode = "list", length = periods)
 
@@ -219,7 +219,7 @@ hld_period_calcs2 <- function(a, b, weights){
 
 df_portfolio <- df_portfolio %>% mutate(MCW = unlist(Map(hld_period_calcs2, a = holding_return_list, b = HML, weights = mcap_wght)))
 
-#### 3. The naive equally-weighted portfolio (EW)
+#### 3. The naive equally-weighted portfolio (EW) (All stocks)
 hld_period_calcs3 <- function(x){
   port = x
   port <- port %>% select_if(~sum(is.na(.)) == 0) %>% select_if(~!all(.==0))
@@ -235,14 +235,17 @@ df_portfolio <- df_portfolio %>% mutate(EW = unlist(Map(hld_period_calcs3, x = h
 
 #### 4. Minimum Variance Portfolio (MVP)
 # Calculate the GMVP weights
+# These portfolios are rebalanced monthly using a 36 months rolling window to estimate the covariance matrix. 
+
+#### Unconstrained
 MVP_wght <- vector(mode = "list", length = periods)
 
 for (i in 1:periods){
   tmp <- lookback_return_list[[i]][unlist(HML[[i]][1])]
-  tmp <- tmp %>% 
-    select_if(~ !any(is.na(.))) %>% select_if(~!all(.==0))
+  tmp <- tmp %>%
+    select_if(~ !any(is.na(.))) %>% select_if(~ !any(.==0))
   cov_tmp <- as.matrix(cov(tmp))
-  inv_tmp <- as.matrix(pinv(cov_tmp)) # use pinv will cause trouble
+  inv_tmp <- as.matrix(inv(cov_tmp)) # use pinv will cause trouble
   wght <- data.frame((ones(1,dim(cov_tmp)[1]) %*% inv_tmp)/sum(inv_tmp))
   MVP_wght[[i]] <- data.frame(wght, row.names = "MVP_wght")
   colnames(MVP_wght[[i]]) <- colnames(cov_tmp)
@@ -250,13 +253,15 @@ for (i in 1:periods){
 
 df_portfolio <- df_portfolio %>% mutate(MVP = unlist(Map(hld_period_calcs2, a = holding_return_list, b = HML, weights = MVP_wght)))
 
+#### With long-only constrain
+
+
+
+
+
+
+
 #### 5. Low Volatility Single Index Model(SIM)
-tmp <- lookback_return_list[[1]][unlist(HML[[1]][1])]
-tmp <- tmp %>% 
-  select_if(~ !any(is.na(.))) %>% select_if(~!all(.==0))
-cov_tmp <- as.matrix(cov(tmp))
-inv_tmp <- as.matrix(pinv(cov_tmp))
-tmp <- inv_tmp%*%cov_tmp
 
 
 
