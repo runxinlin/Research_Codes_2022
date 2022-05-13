@@ -109,7 +109,7 @@ df_Ex_SR <- apply(df_SR, f1, MARGIN = 2)
 holding = 1 # Define the rebalance frequency
 rollingW = 36 # Define the length of lookback estimation window
 lens = nrow(df_Ex_SR)
-periods = as.integer((lens - rollingW) / holding) - 1 # Calculate the holding periods
+periods = as.integer((lens - rollingW) / holding) # Calculate the holding periods
 print(c(periods,rollingW))
 
 # Run time-series regression under the standard CAPM model to estimate market betas
