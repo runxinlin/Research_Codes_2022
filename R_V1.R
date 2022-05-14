@@ -11,12 +11,12 @@
 
 rm(list = ls())
 ####Load Required Packages####
-library(readxl)
-library(xts)
-library(ggplot2)
-library(dplyr)
-library(tidyverse)
-library(pracma)
+require(readxl)
+require(xts)
+require(ggplot2)
+require(dplyr)
+require(tidyverse)
+require(pracma)
 
 ####Import Data####
 df_price <- read_excel('Price.xlsx')
@@ -135,28 +135,38 @@ for (i in 1:periods){
 }
 
 rm(df_Ex_SR_tmp, df_MR_tmp, df_betas)
-####Ranking the betas####
+####Order the betas####
+
+####Test: Rank shares according to their scores
+beta_order <- order(unlist(all_betas[[1]]), na.last = NA)
+names(beta_order) <- names(all_betas[[1]])
+beta_order
+names(beta_order)[beta_order]
+
+####Generalized lookback period calculations
 HML <- vector(mode = "list", length = periods)
 
 HML <- lapply(all_betas, function(x){
   
-  Betas_mean <- sapply(x, function(y){
-    ans <- mean(unlist(y), na.rm = T)
-    names(ans) <- names(y)
-    return(ans)
+  mean_Betas <- sapply(x, function(y){ 
+  #calculate the mean of betas for each company
+  ans <- mean(unlist(y), na.rm = T)
+  names(ans) <- names(y)
+  return(ans)
   })
   
-  rank_betas <- rank(Betas_mean, na.last = NA) 
-  
+  order_betas <- order(mean_Betas, na.last = NA) 
+  names(order_betas) <- names(x)
+
   number_of_portfolios = 5
-  N <- length(rank_betas)
+  N <- length(order_betas)
   quantile = trunc(N/number_of_portfolios)
   
-  return(list(Low_Beta=names(rank_betas)[rank_betas][1:quantile],
-              P1=names(rank_betas)[rank_betas][(quantile+1):(2*quantile)],
-              P2=names(rank_betas)[rank_betas][(2*quantile+1):(3*quantile)],
-              P3=names(rank_betas)[rank_betas][(3*quantile+1):(N-quantile)],
-              High_Beta=names(rank_betas)[rank_betas][(N-quantile+1):N]))
+  return(list(Low_Beta=names(order_betas)[order_betas][1:quantile],
+              P1=names(order_betas)[order_betas][(quantile+1):(2*quantile)],
+              P2=names(order_betas)[order_betas][(2*quantile+1):(3*quantile)],
+              P3=names(order_betas)[order_betas][(3*quantile+1):(N-quantile)],
+              High_Beta=names(order_betas)[order_betas][(N-quantile+1):N]))
 })
 
 ####Portfolio Constructions####
@@ -176,6 +186,14 @@ for (x in 1:periods) {
   holding_size_list[[x]] = df_size[(1+rollingW+(x-1)* holding):(rollingW+ holding+(x-1)* holding), ]
 }
 
+port = holding_return_list[[1]][unlist(HML[[1]][1])]
+port <- port %>% select_if(~sum(is.na(.)) == 0) %>% select_if(~!all(.==0))
+starting_weights = rep(1/length(port), length(port)) # Equal-Weight
+level = rbind(starting_weights,port+1)
+level = rollapply(level, FUN = prod, width = 1:(holding +1), align = "right")
+value = rowSums(level,na.rm = T)
+returns = round(log(value[2:length(value)]/value[1:(length(value)-1)]),4) # log return
+return(returns)
 #### 1. Equal-Weighting lowbeta portfolio (Lowbeta Stocks)
 #The equal-weighted low beta portfolio (Low beta) is formed by equal weighting 
 #those stocks with the lowest 20% of betas. 
