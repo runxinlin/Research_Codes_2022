@@ -186,14 +186,6 @@ for (x in 1:periods) {
   holding_size_list[[x]] = df_size[(1+rollingW+(x-1)* holding):(rollingW+ holding+(x-1)* holding), ]
 }
 
-port = holding_return_list[[1]][unlist(HML[[1]][1])]
-port <- port %>% select_if(~sum(is.na(.)) == 0) %>% select_if(~!all(.==0))
-starting_weights = rep(1/length(port), length(port)) # Equal-Weight
-level = rbind(starting_weights,port+1)
-level = rollapply(level, FUN = prod, width = 1:(holding +1), align = "right")
-value = rowSums(level,na.rm = T)
-returns = round(log(value[2:length(value)]/value[1:(length(value)-1)]),4) # log return
-return(returns)
 #### 1. Equal-Weighting lowbeta portfolio (Lowbeta Stocks)
 #The equal-weighted low beta portfolio (Low beta) is formed by equal weighting 
 #those stocks with the lowest 20% of betas. 
@@ -263,7 +255,7 @@ for (i in 1:periods){
   tmp <- tmp %>%
     select_if(~ !any(is.na(.))) %>% select_if(~ !any(.==0))
   cov_tmp <- as.matrix(cov(tmp))
-  inv_tmp <- as.matrix(inv(cov_tmp)) # use pinv will cause trouble
+  inv_tmp <- as.matrix(inv(cov_tmp)) # use pinv will cause the sum of wght not equal to 1, because it won't return real inv
   wght <- data.frame((ones(1,dim(cov_tmp)[1]) %*% inv_tmp)/sum(inv_tmp))
   MVP_wght[[i]] <- data.frame(wght, row.names = "MVP_wght")
   colnames(MVP_wght[[i]]) <- colnames(cov_tmp)
@@ -271,10 +263,12 @@ for (i in 1:periods){
 
 df_portfolio <- df_portfolio %>% mutate(MVP = unlist(Map(hld_period_calcs2, a = holding_return_list, b = HML, weights = MVP_wght)))
 
+
 #### With long-only constrain
-
-
-
+i = 1
+tmp <- lookback_return_list[[i]][unlist(HML[[i]][1])]
+tmp <- tmp %>%
+  select_if(~ !any(is.na(.))) %>% select_if(~ !any(.==0))
 
 
 
